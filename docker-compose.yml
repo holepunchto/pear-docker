@@ -1,0 +1,9 @@
+services:
+  pear:
+    build: .
+    image: pear:latest
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./workspace:/workspace
+    working_dir: /workspace
