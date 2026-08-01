@@ -20,6 +20,11 @@ RUN . "$NVM_DIR/nvm.sh" \
     && ln -sf "$NVM_DIR/versions/node/$(nvm version $NODE_VERSION)/bin/npm" /usr/local/bin/npm \
     && ln -sf "$NVM_DIR/versions/node/$(nvm version $NODE_VERSION)/bin/npx" /usr/local/bin/npx
 
+# Bump PEAR_CACHEBUST (e.g. --build-arg PEAR_CACHEBUST=$(date +%s)) to force
+# this layer and everything below it to reinstall/re-bootstrap when a new
+# version of Pear ships, without rebuilding the apt/nvm/node layers above.
+ARG PEAR_CACHEBUST=1
+
 RUN npm i -g pear \
     && ln -sf "$(dirname "$(readlink -f /usr/local/bin/node)")/pear" /usr/local/bin/pear
 
