@@ -1,6 +1,9 @@
 services:
   pear:
-    build: .
+    build:
+      context: .
+      args:
+        PEAR_CACHEBUST: ${PEAR_CACHEBUST:-1}
     image: pear:latest
     stdin_open: true
     tty: true
