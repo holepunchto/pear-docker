@@ -74,7 +74,29 @@ run fresh instead of printing `--> Using cache`. Then re-tag/push as usual
 
 ## Publishing to Docker Hub
 
-Once the image is verified, tag and push it:
+Publishing is automated via the `.github/workflows/docker-publish.yml` GitHub
+Actions workflow, which authenticates to Docker Hub using [OIDC](https://www.docker.com/blog/docker-oidc-connections-for-github-actions-available-for-docker-orgs/)
+(no long-lived Docker Hub password/token stored in GitHub).
+
+- Push to `main` publishes `docker.io/tetherto/pear:latest` and `:edge`.
+- Pushing a version tag (e.g. `v1.2.3`) publishes semver tags `1.2.3`, `1.2`,
+  and `1`.
+- The workflow can also be run manually from the Actions tab.
+
+Every build passes a fresh `PEAR_CACHEBUST` value so published images always
+bootstrap the current release of Pear rather than reusing a cached layer.
+
+### One-time setup
+
+1. In [Docker Home](https://app.docker.com/), create an OIDC connection for
+   the `tetherto` org (Settings → OIDC connections) scoped to this repo, e.g.
+   subject `repo:holepunchto/pear-docker:*`.
+2. Add the connection ID as a repository secret named
+   `DOCKERHUB_OIDC_CONNECTIONID` (Settings → Secrets and variables → Actions).
+
+No Docker Hub password or access token is needed once this is configured.
+
+To publish manually instead:
 
 ```sh
 podman build -t docker.io/tetherto/pear:latest .
