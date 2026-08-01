@@ -45,6 +45,33 @@ container (also the container's working directory), so any Pear project you
 create or `pear stage`/`pear seed` from there persists on the host across
 container runs.
 
+## Updating Pear
+
+Pear ships new versions fairly often. Because the image layers are cached,
+a plain `podman-compose build` / `podman build` will keep reusing the old
+`npm i -g pear` layer forever, even after Pear releases a new version.
+
+To force `pear` (and the `pear -v` bootstrap and `pear-install`) to reinstall
+without rebuilding the earlier apt/nvm/Node layers, pass a new value for the
+`PEAR_CACHEBUST` build arg — any value that differs from the last build works,
+e.g. the current timestamp:
+
+With podman-compose:
+
+```sh
+PEAR_CACHEBUST=$(date +%s) podman-compose build
+```
+
+Or directly with podman/docker:
+
+```sh
+podman build --build-arg PEAR_CACHEBUST=$(date +%s) -t pear:latest .
+```
+
+You should see `STEP .../... RUN npm i -g pear` (and the following steps)
+run fresh instead of printing `--> Using cache`. Then re-tag/push as usual
+(see below).
+
 ## Publishing to Docker Hub
 
 Once the image is verified, tag and push it:
