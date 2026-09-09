@@ -23,7 +23,7 @@ podman-compose build
 or directly:
 
 ```sh
-podman build -t pear-sandbox .
+podman build -t pear .
 ```
 
 ## Run
@@ -31,13 +31,13 @@ podman build -t pear-sandbox .
 Drop into a shell with `pear` ready to go:
 
 ```sh
-podman-compose run --rm pear bash
+podman-compose run -v $HOME/pear-mount:/root/.config/pear --rm pear bash
 ```
 
 Run a one-off pear command:
 
 ```sh
-podman-compose run --rm pear pear -v
+podman-compose run -v $HOME/pear-mount:/root/.config/pear --rm pear pear -v
 ```
 
 The `./workspace` directory on the host is mounted at `/workspace` inside the
