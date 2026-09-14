@@ -1,41 +1,24 @@
-FROM ubuntu:24.04
+FROM debian:bookworm-slim
 
-ENV DEBIAN_FRONTEND=noninteractive
-ENV NVM_DIR=/root/.nvm
-ENV NODE_VERSION=24
+ARG DEBIAN_FRONTEND=noninteractive
 ENV PATH=/root/.local/bin:$PATH
 
+# Pear needs libatomic1; sodium-native needs libstdc++6.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
     ca-certificates \
+    curl \
     libatomic1 \
+    libstdc++6 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.5/install.sh | bash
-
-RUN . "$NVM_DIR/nvm.sh" \
-    && nvm install $NODE_VERSION \
-    && nvm alias default $NODE_VERSION \
-    && ln -sf "$NVM_DIR/versions/node/$(nvm version $NODE_VERSION)/bin/node" /usr/local/bin/node \
-    && ln -sf "$NVM_DIR/versions/node/$(nvm version $NODE_VERSION)/bin/npm" /usr/local/bin/npm \
-    && ln -sf "$NVM_DIR/versions/node/$(nvm version $NODE_VERSION)/bin/npx" /usr/local/bin/npx
-
-# Bump PEAR_CACHEBUST (e.g. --build-arg PEAR_CACHEBUST=$(date +%s)) to force
-# this layer and everything below it to reinstall/re-bootstrap when a new
-# version of Pear ships, without rebuilding the apt/nvm/node layers above.
+# Bump PEAR_CACHEBUST (e.g. --build-arg PEAR_CACHEBUST=$(date +%s)) to
+# reinstall Pear without rebuilding the system packages above.
 ARG PEAR_CACHEBUST=1
 
-RUN npm i -g pear \
-    && ln -sf "$(dirname "$(readlink -f /usr/local/bin/node)")/pear" /usr/local/bin/pear
+# Do not run Pear during the build. Its sidecar state is tied to the build
+# filesystem.
+RUN curl -fsSL https://install.pears.com/pear.sh | sh
 
-# Trigger Pear's one-time bootstrap (downloads the pear:// runtime) at build
-# time so it's baked into the image instead of happening on every container.
-RUN pear -v
-
-# Add pear-install as well
-
-RUN npm i -g pear-install \
-    && ln -sf "$(dirname "$(readlink -f /usr/local/bin/node)")/pear-install" /usr/local/bin/pear-install
-
+WORKDIR /workspace
 
 CMD ["bash"]
