@@ -1,16 +1,13 @@
 # pear-cli docker image
 
-A Docker/Podman image for running [Pear](https://docs.pears.com/) (Holepunch)
-inside Ubuntu 24.04.
+A Docker/Podman image for running [Pear](https://docs.pears.com/) (Holepunch).
 
-The image installs Node.js 24 via nvm, installs `pear` globally via npm, and
-runs `pear -v` once at build time so Pear's one-time P2P bootstrap
-(`Bootstrapping: pear://...`) is baked into the image layer. Containers
-started from the built image get a working `pear` command immediately, with
-no bootstrap delay and no "restart your terminal" step needed.
+The image uses Debian Bookworm Slim and installs Pear from
+`https://install.pears.com/pear.sh`. The `pear` command is ready when the
+container starts.
 
-Also included in the image is pear-install, so you can install an app inside a container. 
-A nice way to test out pear apps quickly with less risk.
+Use `pear install` to install apps inside the container—a quick way to try Pear
+apps with less risk.
 
 ## Build
 
@@ -34,27 +31,21 @@ Drop into a shell with `pear` ready to go:
 podman-compose run -v $HOME/pear-mount:/root/.config/pear --rm pear bash
 ```
 
-Run a one-off pear command:
+Run a one-off Pear command:
 
 ```sh
 podman-compose run -v $HOME/pear-mount:/root/.config/pear --rm pear pear -v
 ```
 
-The `./workspace` directory on the host is mounted at `/workspace` inside the
-container (also the container's working directory), so any Pear project you
-create or `pear stage`/`pear seed` from there persists on the host across
-container runs.
+The host's `./workspace` directory is mounted at `/workspace`, the container's
+default working directory. Pear projects created, staged, or seeded there stay
+on the host between runs.
 
 ## Updating Pear
 
-Pear ships new versions fairly often. Because the image layers are cached,
-a plain `podman-compose build` / `podman build` will keep reusing the old
-`npm i -g pear` layer forever, even after Pear releases a new version.
-
-To force `pear` (and the `pear -v` bootstrap and `pear-install`) to reinstall
-without rebuilding the earlier apt/nvm/Node layers, pass a new value for the
-`PEAR_CACHEBUST` build arg — any value that differs from the last build works,
-e.g. the current timestamp:
+Docker may reuse an older Pear installation after a new version ships. To
+reinstall Pear without rerunning `apt`, give `PEAR_CACHEBUST` a new value, such
+as the current timestamp:
 
 With podman-compose:
 
@@ -68,15 +59,14 @@ Or directly with podman/docker:
 podman build --build-arg PEAR_CACHEBUST=$(date +%s) -t pear:latest .
 ```
 
-You should see `STEP .../... RUN npm i -g pear` (and the following steps)
-run fresh instead of printing `--> Using cache`. Then re-tag/push as usual
-(see below).
+This reruns the `RUN curl ...` step. Then re-tag and push as usual (see below).
 
 ## Publishing to Docker Hub
 
-Publishing is automated via the `.github/workflows/docker-publish.yml` GitHub
-Actions workflow, which authenticates to Docker Hub using [OIDC](https://www.docker.com/blog/docker-oidc-connections-for-github-actions-available-for-docker-orgs/)
-(no long-lived Docker Hub password/token stored in GitHub).
+`.github/workflows/docker-publish.yml` publishes images to Docker Hub and uses
+[OIDC](https://www.docker.com/blog/docker-oidc-connections-for-github-actions-available-for-docker-orgs/)
+for authentication. No Docker Hub password or access token is stored in
+GitHub.
 
 - Push to `main` publishes `docker.io/tetherto/pear:latest` and `:edge`.
 - Pushing a version tag (e.g. `v1.2.3`) publishes semver tags `1.2.3`, `1.2`,
@@ -84,7 +74,7 @@ Actions workflow, which authenticates to Docker Hub using [OIDC](https://www.doc
 - The workflow can also be run manually from the Actions tab.
 
 Every build passes a fresh `PEAR_CACHEBUST` value so published images always
-bootstrap the current release of Pear rather than reusing a cached layer.
+install the current release of Pear rather than reusing a cached layer.
 
 ### One-time setup
 
@@ -93,8 +83,6 @@ bootstrap the current release of Pear rather than reusing a cached layer.
    subject `repo:holepunchto/pear-docker:*`.
 2. Add the connection ID as a repository secret named
    `DOCKERHUB_OIDC_CONNECTIONID` (Settings → Secrets and variables → Actions).
-
-No Docker Hub password or access token is needed once this is configured.
 
 To publish manually instead:
 
@@ -105,9 +93,12 @@ podman push docker.io/tetherto/pear:latest
 
 ## Notes
 
-- `libatomic1` is required on Ubuntu 24.04 for Pear's bootstrapped runtime —
-  without it, the first `pear -v` fails with "Installation failed. The
-  required library libatomic.so was not found on the system."
-- Pear's bootstrap writes to `/root/.config/pear` and `/root/.local/bin/pear`
-  inside the image; these are baked in as part of the build, not created at
-  container start.
+- `libatomic1` is required by Pear. Without it, `pear -v` fails with:
+  "Installation failed. The required library libatomic.so was not found on
+  the system."
+- Pear stores its runtime state in `/root/.config/pear`. Mount that directory
+  to keep the state between containers.
+- The installer verifies the Pear download, but the install script itself is
+  fetched unpinned over HTTPS.
+- The image includes Debian's standard command-line tools and curl, but not
+  Node.js or npm.
